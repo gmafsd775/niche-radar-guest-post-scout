@@ -17,12 +17,12 @@ Modular AI-powered workflow to scout guest post websites by niche, shortlist beg
 ---
 
 Visit the frontend here:  
-🔗 [https://gmafsd775.github.io/niche-radar-guest-post-scout/](https://gmafsd775.github.io/niche-radar-guest-post-scout/)
+🔗 [https://gmafsd775.github.io/niche-radar-guest-post-scout/
 
 ## 📦 GitHub Repository
 
 Explore the source code and workflow:  
-🔗 [[https://github.com/gmafsd775/niche-radar-guest-post-scout](https://github.com/gmafsd775/niche-radar-guest-post-scout)](https://github.com/gmfaid7575/niche-radar-guest-post-scout)
+🔗 [[https://github.com/gmafsd775/niche-radar-guest-post-scout]
 
 ##  Workflow Structure
 
