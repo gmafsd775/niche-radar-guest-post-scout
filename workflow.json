@@ -1,0 +1,238 @@
+{
+  "name": "NicheRadar Protocol: Guest Post Scout",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.body.niche }}",
+        "options": {
+          "systemMessage": "=Based on the niche \"{{ $json.body.niche }}\", list 10 high-traffic websites best for Guest posting in structured JSON format.\n\nEach item must include:\n- \"website\": Name of the website\n- \"domain_rating\": Estimated Domain Rating (DR)\n- \"domain_authority\": Estimated Domain Authority (DA)\n- \"url\": Website URL\n- \"email\": Best available contact email (or \"Contact Form\" if not available)\n- \"phone\": Customer service or general contact number (if available)\n \"traffic\":how many people come on this website monthly and also gives remarks regarding for best top three for a new business starter.\n\n(always show or find those website with high seo and containing email as well as phone no. for contact compalsary)\n\nReturn the result as a JSON array like this:\n[\n  {\n    \"website\": \"JustBats.com\",\n    \"domain_rating\": \"75\",\n    \"domain_authority\": \"70\",\n    \"url\": \"https://www.justbats.com/\",\n    \"email\": \"customer.service@justbats.com\",\n    \"phone\": \"1-866-321-2287\",\n    \"traffic\": \"100 million people monthly\"\n  }\n  \n]\n\n"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        -208,
+        0
+      ],
+      "id": "21cb8f83-a1d0-40a8-83ef-c48d6ec8012c",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -288,
+        208
+      ],
+      "id": "96649731-ef78-4b6d-b565-0eb4cc7f4e7e",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "JGqQmjjBgwTXcghL",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e3c7d866-04e4-47f7-9b3d-a19ca4e00dcd",
+              "name": "website",
+              "value": "={{ $json.website }}",
+              "type": "string"
+            },
+            {
+              "id": "245e876b-e134-487d-aac4-7c0161bac976",
+              "name": "domain_rating",
+              "value": "={{ $json.domain_rating }}",
+              "type": "string"
+            },
+            {
+              "id": "5d7843eb-a9b6-4668-9e54-30e0c04f8a6f",
+              "name": "domain_authority",
+              "value": "={{ $json.domain_authority }}",
+              "type": "string"
+            },
+            {
+              "id": "5d6a2dda-f0a9-4e3b-8186-cf0f468dec71",
+              "name": "url",
+              "value": "={{ $json.url }}",
+              "type": "string"
+            },
+            {
+              "id": "38f5e666-bcb5-45c3-96ab-d93f30a8e4ca",
+              "name": "email",
+              "value": "={{ $json.email }}",
+              "type": "string"
+            },
+            {
+              "id": "2479c645-0318-49fa-a8cf-505c640bf10a",
+              "name": "phone",
+              "value": "={{ $json.phone }}",
+              "type": "string"
+            },
+            {
+              "id": "59407618-922b-49f1-af8f-01f101630b87",
+              "name": "traffic",
+              "value": "={{$json.traffic}}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        256,
+        0
+      ],
+      "id": "d7ebabe6-f598-4d31-b660-6a4cbb0838f0",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "radar",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -464,
+        0
+      ],
+      "id": "fb80d495-538d-4ed5-ba4c-730b26d99dbd",
+      "name": "Webhook",
+      "webhookId": "99204162-f649-4f9b-82e2-33429ae95a79"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        432,
+        0
+      ],
+      "id": "025c07ad-ce89-4499-9c58-d5f3ca8d06f1",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = items[0].json.output || \"\";\n\n// Step 1: Extract the JSON block using regex\nconst match = raw.match(/```json\\s*([\\s\\S]*?)\\s*```/);\nif (!match || !match[1]) {\n  return [{\n    json: {\n      error: \"No valid JSON block found in AI output\",\n      preview: raw.slice(0, 300)\n    }\n  }];\n}\n\nconst cleaned = match[1].trim();\n\n// Step 2: Parse the JSON safely\nlet parsed;\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (err) {\n  return [{\n    json: {\n      error: \"Failed to parse extracted JSON\",\n      message: err.message,\n      preview: cleaned.slice(0, 300)\n    }\n  }];\n}\n\n// Step 3: Validate it's an array\nif (!Array.isArray(parsed)) {\n  return [{\n    json: {\n      error: \"Parsed data is not an array\",\n      type: typeof parsed,\n      raw: parsed\n    }\n  }];\n}\n\n// Step 4: Normalize each entry\nreturn parsed.map((entry, index) => ({\n  json: {\n    index,\n    website: entry.website || \"(missing)\",\n    domain_rating: entry.domain_rating || \"(missing)\",\n    domain_authority: entry.domain_authority || \"(missing)\",\n    url: entry.url || \"(missing)\",\n    email: entry.email || \"(missing)\",\n    phone: entry.phone || \"(missing)\",\n    traffic: entry.traffic || \"(missing)\"\n  }\n}));\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        80,
+        0
+      ],
+      "id": "0fec90ef-5c5a-47e0-bd08-d02e6e6c469d",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $execution.id }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        -144,
+        224
+      ],
+      "id": "7d20e90e-905e-43c3-9654-f6d0d491536a",
+      "name": "Simple Memory"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1ccece1b-8606-4017-88e0-3b3332519a64",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "09556ec5b7a73c73084d4c063b3486cfba2f1754ac96848e3a89104ad3a617a8"
+  },
+  "id": "PdN7rUrnM9Gk2Mqz",
+  "tags": []
+}
