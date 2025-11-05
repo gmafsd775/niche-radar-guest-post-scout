@@ -22,7 +22,7 @@ Visit the frontend here:
 ## 📦 GitHub Repository
 
 Explore the source code and workflow:  
-🔗 [https://github.com/gmafsd775/niche-radar-guest-post-scout](https://github.com/gmfaid7575/niche-radar-guest-post-scout)
+🔗 [[https://github.com/gmafsd775/niche-radar-guest-post-scout](https://github.com/gmafsd775/niche-radar-guest-post-scout)](https://github.com/gmfaid7575/niche-radar-guest-post-scout)
 
 ##  Workflow Structure
 
