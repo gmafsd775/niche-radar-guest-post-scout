@@ -688,20 +688,20 @@
             
             // Method 1: Direct array (n8n returns array of objects)
             if (Array.isArray(data)) {
-                debugLog('Found direct array in response');
+                debugLog(`Found direct array in response with ${data.length} items`);
                 websites = data;
             }
             // Method 2: Check if data is a single website object
-            else if (data && typeof data === 'object' && (data.website || data.url)) {
+            else if (data && typeof data === 'object' && (data.website || data.url || data.name)) {
                 debugLog('Found single website object in response');
                 websites = [data];
             }
-            // Method 3: Check if data has nested array structure
+            // Method 3: Check for nested structure with multiple items
             else if (data && typeof data === 'object') {
                 debugLog('Searching for nested arrays in response object...');
                 
                 // Common n8n response structures
-                const possibleArrayKeys = ['data', 'items', 'results', 'websites', 'response', 'output'];
+                const possibleArrayKeys = ['data', 'items', 'results', 'websites', 'response', 'output', 'webhook'];
                 
                 for (let key of possibleArrayKeys) {
                     if (data[key] && Array.isArray(data[key])) {
@@ -711,58 +711,91 @@
                     }
                 }
                 
-                // If no array found in common keys, search all keys
+                // If no array found in common keys, search all keys recursively
                 if (websites.length === 0) {
-                    for (let key in data) {
-                        if (Array.isArray(data[key]) && data[key].length > 0) {
-                            const firstItem = data[key][0];
-                            if (firstItem && typeof firstItem === 'object' && 
-                                (firstItem.website || firstItem.url || firstItem.name)) {
-                                debugLog(`Found website array in key: "${key}" with ${data[key].length} items`);
-                                websites = data[key];
-                                break;
+                    const findArrayRecursively = (obj, path = 'root') => {
+                        for (let key in obj) {
+                            if (Array.isArray(obj[key]) && obj[key].length > 0) {
+                                const firstItem = obj[key][0];
+                                if (firstItem && typeof firstItem === 'object') {
+                                    debugLog(`Found potential website array at: ${path}.${key} with ${obj[key].length} items`);
+                                    return obj[key];
+                                }
+                            } else if (obj[key] && typeof obj[key] === 'object') {
+                                const result = findArrayRecursively(obj[key], `${path}.${key}`);
+                                if (result.length > 0) return result;
                             }
                         }
+                        return [];
+                    };
+                    
+                    websites = findArrayRecursively(data);
+                }
+                
+                // Last resort: check if object itself contains multiple items in numbered keys
+                if (websites.length === 0) {
+                    const numberedItems = [];
+                    for (let key in data) {
+                        if (/^\d+$/.test(key) && data[key] && typeof data[key] === 'object') {
+                            numberedItems.push(data[key]);
+                        }
+                    }
+                    if (numberedItems.length > 0) {
+                        debugLog(`Found ${numberedItems.length} items in numbered keys`);
+                        websites = numberedItems;
                     }
                 }
             }
             
             debugLog(`Final extracted websites count: ${websites.length}`);
             
+            // If we still have only 1 website but expect more, check for nested structure
+            if (websites.length === 1 && websites[0] && typeof websites[0] === 'object') {
+                const singleItem = websites[0];
+                // Check if this single item contains multiple websites in a nested array
+                for (let key in singleItem) {
+                    if (Array.isArray(singleItem[key]) && singleItem[key].length > 1) {
+                        debugLog(`Found nested array inside single item with ${singleItem[key].length} items`);
+                        websites = singleItem[key];
+                        break;
+                    }
+                }
+            }
+            
             // Normalize the website data
             return websites.map((item, index) => {
                 // Extract website name - fix the colon issue
-                let name = item.website || item.name || item.title || `Website ${index + 1}`;
+                let name = item.website || item.name || item.title || item.domain || `Website ${index + 1}`;
                 name = name.replace(/:/g, ''); // Remove colons from names like "ESPN:cricinfo"
                 
                 // Extract URL
-                let url = item.url || item.website_url || item.link;
+                let url = item.url || item.website_url || item.link || item.websiteUrl;
                 if (!url && name) {
                     url = `https://www.${name.toLowerCase().replace(/\s+/g, '')}.com`;
                 }
                 
                 // Extract domain metrics - use actual data only
-                const domain_rating = item.domain_rating || item.dr || item.rating || 0;
-                const domain_authority = item.domain_authority || item.da || item.authority || 0;
+                const domain_rating = item.domain_rating || item.dr || item.rating || item.domainRating || 0;
+                const domain_authority = item.domain_authority || item.da || item.authority || item.domainAuthority || 0;
                 
                 // Extract traffic data
-                const traffic = item.traffic || item.monthly_traffic || 'Not Available';
+                const traffic = item.traffic || item.monthly_traffic || item.monthlyTraffic || 'Not Available';
                 
                 // Extract contact info from actual data
-                const email = item.email || item.contact_email || 'Contact Form';
-                const phone = item.phone || item.contact_phone || 'Not Available';
+                const email = item.email || item.contact_email || item.contactEmail || 'Contact Form';
+                const phone = item.phone || item.contact_phone || item.contactPhone || 'Not Available';
                 
                 const websiteData = {
                     name: name,
                     url: url,
-                    domain_rating: parseInt(domain_rating),
-                    domain_authority: parseInt(domain_authority),
+                    domain_rating: parseInt(domain_rating) || 0,
+                    domain_authority: parseInt(domain_authority) || 0,
                     traffic: traffic,
                     email: email,
                     phone: phone
                 };
                 
-                debugLog(`Website ${index + 1}: ${name} | DA: ${domain_authority} | DR: ${domain_rating} | Traffic: ${traffic}`);
+                debugLog(`Website ${index + 1}: ${name} | DA: ${websiteData.domain_authority} | DR: ${websiteData.domain_rating} | Traffic: ${traffic}`);
                 
                 return websiteData;
             });
@@ -913,5 +946,4 @@
         debugLog('Frontend initialized - Ready to fetch real data from n8n');
     </script>
 </body>
-
 </html>
